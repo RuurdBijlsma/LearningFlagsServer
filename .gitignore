@@ -1,0 +1,5 @@
+.idea
+*.pyc
+venv
+__pycache__
+run.txt
