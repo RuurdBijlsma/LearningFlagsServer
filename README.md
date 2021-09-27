@@ -18,3 +18,8 @@ pip install -r requirements.txt
 cd src
 python main.py
 ```
+
+## Generate requirements.txt
+Make sure you have pip-tools `python -m pip install pip-tools`
+
+`pip-compile --output-file=requirements.txt requirements.in`
