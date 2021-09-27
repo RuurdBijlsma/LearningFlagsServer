@@ -1,34 +1,24 @@
-import numpy as np
-import socketio
 from aiohttp import web
+import socketio
 
-# create a Socket.IO server
 sio = socketio.AsyncServer(cors_allowed_origins='*', logger=True)
 app = web.Application()
 sio.attach(app)
-# app = socketio.WSGIApp(sio)
-
-games = {}
 
 
-# Events are sent from the web client to this server
 @sio.event
-async def start_game(sid, arg):
-    try:
-        print('received start game with arg', arg)
-    except Exception as e:
-        print(e)  # Events are sent from the web client to this server
+async def hello(sid, data):
+    print("hello message ", data)
 
 
 @sio.event
 def connect(sid, environ):
-    print('connect sid:', sid)
+    print("connect ", sid)
 
 
 @sio.event
 def disconnect(sid):
-    games.pop(sid)
-    print('disconnect sid:', sid)
+    print('disconnect ', sid)
 
 
 if __name__ == '__main__':

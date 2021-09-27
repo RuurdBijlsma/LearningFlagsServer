@@ -3,5 +3,4 @@ python-socketio
 eventlet
 requests
 numpy
-seaborn
 matplotlib
