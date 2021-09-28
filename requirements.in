@@ -1,5 +1,4 @@
 python-socketio
-eventlet
-requests
-numpy
+pandas
 matplotlib
+numpy
