@@ -1,15 +1,34 @@
-from __future__ import division
+import dataclasses
+from typing import Optional, Union
+
 import math
 import pandas as pd
-from collections import namedtuple
-
-Fact = namedtuple("Fact", "fact_id, question, answer")
-Response = namedtuple("Response", "fact, start_time, rt, correct")
-Encounter = namedtuple("Encounter", "activation, time, reaction_time, decay")
 
 
-class SpacingModel(object):
+@dataclasses.dataclass(frozen=True)
+class Fact:
+    fact_id: int
+    question: str
+    answer: str
 
+
+@dataclasses.dataclass(frozen=True)
+class Response:
+    fact: Fact
+    start_time: float
+    rt: float
+    correct: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class Encounter:
+    activation: float
+    time: float
+    reaction_time: float
+    decay: float
+
+
+class SpacingModel:
     # Model constants
     LOOKAHEAD_TIME = 15000
     FORGET_THRESHOLD = -0.8
@@ -21,36 +40,33 @@ class SpacingModel(object):
         self.facts = []
         self.responses = []
 
-    def add_fact(self, fact):
-        # type: (Fact) -> None
+    def add_fact(self, fact: Fact) -> None:
         """
         Add a fact to the list of study items.
         """
         # Ensure that a fact with this ID does not exist already
         if next((f for f in self.facts if f.fact_id == fact.fact_id), None):
             raise RuntimeError(
-                "Error while adding fact: There is already a fact with the same ID: {}. Each fact must have a unique ID".format(fact.fact_id))
+                f"Error while adding fact: There is already a fact with the same ID: {fact.fact_id}. "
+                "Each fact must have a unique ID")
 
         self.facts.append(fact)
 
-
-    def register_response(self, response):
-        # type: (Response) -> None
+    def register_response(self, response: Response) -> None:
         """
         Register a response.
         """
         # Prevent duplicate responses
         if next((r for r in self.responses if r.start_time == response.start_time), None):
-            raise RuntimeError(
-                "Error while registering response: A response has already been logged at this start_time: {}. Each response must occur at a unique start_time.".format(response.start_time))
+            raise RuntimeError("Error while registering response: A response has already been logged at this "
+                               f"start_time: {response.start_time}. Each response must occur at a unique start_time.")
 
         self.responses.append(response)
 
-
-    def get_next_fact(self, current_time):
-        # type: (int) -> (Fact, bool)
+    def get_next_fact(self, current_time: int) -> (Fact, bool):
         """
-        Returns a tuple containing the fact that needs to be repeated most urgently and a boolean indicating whether this fact is new (True) or has been presented before (False).
+        Returns a tuple containing the fact that needs to be repeated most urgently and a boolean indicating whether
+        this fact is new (True) or has been presented before (False).
         If none of the previously studied facts needs to be repeated right now, return a new fact instead.
         """
         # Calculate all fact activations in the near future
@@ -67,73 +83,66 @@ class SpacingModel(object):
         # Reinforce the weakest fact with an activation below the threshold
         seen_facts_below_threshold = [(f, a) for (f, a) in seen_facts if a < self.FORGET_THRESHOLD]
         if len(not_seen_facts) == 0 or len(seen_facts_below_threshold) > 0:
-            weakest_fact = min(seen_facts, key = lambda t: t[1])
-            return((weakest_fact[0], False))
+            weakest_fact = min(seen_facts, key=lambda t: t[1])
+            return weakest_fact[0], False
 
         # If none of the previously seen facts has an activation below the threshold, return a new fact
-        return((not_seen_facts[0][0], True))
+        return not_seen_facts[0][0], True
 
+    def calculate_alpha(self, time: int, fact: Fact) -> (float, float):
+        """
+        Calculate alpha and list of previous encounters
+        :return:
+        """
 
-    def get_rate_of_forgetting(self, time, fact):
-        # type: (int, Fact) -> float
-        """
-        Return the estimated rate of forgetting of the fact at the specified time
-        """
         encounters = []
-
         responses_for_fact = [r for r in self.responses if r.fact.fact_id == fact.fact_id and r.start_time < time]
         alpha = self.DEFAULT_ALPHA
-
         # Calculate the activation by running through the sequence of previous responses
         for response in responses_for_fact:
             activation = self.calculate_activation_from_encounters(encounters, response.start_time)
-            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
+            encounters.append(
+                Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
             alpha = self.estimate_alpha(encounters, activation, response, alpha)
 
             # Update decay estimates of previous encounters
-            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
+            encounters = [
+                dataclasses.replace(encounter, decay=self.calculate_decay(encounter.activation, alpha))
+                for encounter in encounters
+            ]
 
-        return(alpha)
+        return alpha, encounters
 
+    def get_rate_of_forgetting(self, time: int, fact: Fact) -> float:
+        """
+        Return the estimated rate of forgetting of the fact at the specified time
+        """
+        alpha, _ = self.calculate_alpha(time, fact)
 
-    def calculate_activation(self, time, fact):
-        # type: (int, Fact) -> float
+        return alpha
+
+    def calculate_activation(self, time: int, fact: Fact) -> float:
         """
         Calculate the activation of a fact at the given time.
         """
 
-        encounters = []
+        _, encounters = self.calculate_alpha(time, fact)
 
-        responses_for_fact = [r for r in self.responses if r.fact.fact_id == fact.fact_id and r.start_time < time]
-        alpha = self.DEFAULT_ALPHA
+        return self.calculate_activation_from_encounters(encounters, time)
 
-        # Calculate the activation by running through the sequence of previous responses
-        for response in responses_for_fact:
-            activation = self.calculate_activation_from_encounters(encounters, response.start_time)
-            encounters.append(Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
-            alpha = self.estimate_alpha(encounters, activation, response, alpha)
-
-            # Update decay estimates of previous encounters
-            encounters = [encounter._replace(decay = self.calculate_decay(encounter.activation, alpha)) for encounter in encounters]
-
-        return(self.calculate_activation_from_encounters(encounters, time))
-
-
-    def calculate_decay(self, activation, alpha):
-        # type: (float, float) -> float
+    def calculate_decay(self, activation: float, alpha: float) -> float:
         """
         Calculate activation-dependent decay
         """
         return self.C * math.exp(activation) + alpha
 
-
-    def estimate_alpha(self, encounters, activation, response, previous_alpha):
-        # type: ([Encounter], float, Response, float) -> float
+    def estimate_alpha(self, encounters: [Encounter], activation: float, response: Response,
+                       previous_alpha: float) -> float:
         """
         Estimate the rate of forgetting parameter (alpha) for an item.
         """
         if len(encounters) < 3:
-            return(self.DEFAULT_ALPHA)
+            return self.DEFAULT_ALPHA
 
         a_fit = previous_alpha
         reading_time = self.get_reading_time(response.fact.question)
@@ -155,8 +164,8 @@ class SpacingModel(object):
             # Adjust all decays to use the new alpha
             a0_diff = a0 - a_fit
             a1_diff = a1 - a_fit
-            d_a0 = [e._replace(decay = e.decay + a0_diff) for e in encounters]
-            d_a1 = [e._replace(decay = e.decay + a1_diff) for e in encounters]
+            d_a0 = [dataclasses.replace(e, decay=e.decay + a0_diff) for e in encounters]
+            d_a1 = [dataclasses.replace(e, decay=e.decay + a1_diff) for e in encounters]
 
             # Calculate the reaction times from activation and compare against observed RTs
             encounter_window = encounters[max(1, len(encounters) - 5):]
@@ -171,50 +180,45 @@ class SpacingModel(object):
                 a0 = ac
 
         # The new alpha estimate is the average value in the remaining bracket
-        return((a0 + a1) / 2)
+        return (a0 + a1) / 2
 
-
-    def calculate_activation_from_encounters(self, encounters, current_time):
-        # type: ([Encounter], int) -> float
+    @staticmethod
+    def calculate_activation_from_encounters(encounters: [Encounter], current_time: int) -> float:
         included_encounters = [e for e in encounters if e.time < current_time]
 
         if len(included_encounters) == 0:
-            return(-float("inf"))
+            return -float("inf")
 
-        return(math.log(sum([math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters])))
+        return math.log(sum([math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters]))
 
-
-    def calculate_predicted_reaction_time_error(self, test_set, decay_adjusted_encounters, reading_time):
-        # type: ([Encounter], [Encounter], Fact) -> float
+    def calculate_predicted_reaction_time_error(self, test_set: [Encounter], decay_adjusted_encounters: [Encounter],
+                                                reading_time: float) -> float:
         """
-        Calculate the summed absolute difference between observed response times and those predicted based on a decay adjustment.
+        Calculate the summed absolute difference between observed response times and those predicted based on a decay
+        adjustment.
         """
-        activations = [self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100) for e in test_set]
+        activations = [self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100) for e in
+                       test_set]
         rt = [self.estimate_reaction_time_from_activation(a, reading_time) for a in activations]
         rt_errors = [abs(e.reaction_time - rt) for (e, rt) in zip(test_set, rt)]
-        return(sum(rt_errors))
+        return sum(rt_errors)
 
-
-    def estimate_reaction_time_from_activation(self, activation, reading_time):
-        # type: (float, int) -> float
+    def estimate_reaction_time_from_activation(self, activation: float, reading_time: float) -> float:
         """
         Calculate an estimated reaction time given a fact's activation and the expected reading time 
         """
-        return((self.F * math.exp(-activation) + (reading_time / 1000)) * 1000)
+        return (self.F * math.exp(-activation) + (reading_time / 1000)) * 1000
 
-
-    def get_max_reaction_time_for_fact(self, fact):
-        # type: (Fact) -> float
+    def get_max_reaction_time_for_fact(self, fact: Fact) -> float:
         """
         Return the highest response time we can reasonably expect for a given fact
         """
         reading_time = self.get_reading_time(fact.question)
         max_rt = 1.5 * self.estimate_reaction_time_from_activation(self.FORGET_THRESHOLD, reading_time)
-        return(max_rt)
+        return max_rt
 
-
-    def get_reading_time(self, text):
-        # type: (str) -> float
+    @staticmethod
+    def get_reading_time(text: str) -> float:
         """
         Return expected reading time in milliseconds for a given string
         """
@@ -222,38 +226,34 @@ class SpacingModel(object):
 
         if word_count > 1:
             character_count = len(text)
-            return(max((-157.9 + character_count * 19.5), 300))
+            return max((-157.9 + character_count * 19.5), 300.)
 
-        return(300)
+        return 300.
 
-
-    def normalise_reaction_time(self, response):
-        # type: (Response) -> float
+    def normalise_reaction_time(self, response: Response) -> float:
         """
         Cut off extremely long responses to keep the reaction time within reasonable bounds
         """
         rt = response.rt if response.correct else 60000
         max_rt = self.get_max_reaction_time_for_fact(response.fact)
-        return(min(rt, max_rt))
+        return min(rt, max_rt)
 
-
-    def export_data(self, path = None):
-        # type: (str) -> DataFrame
+    def export_data(self, path: Optional[str] = None) -> Union[pd.DataFrame, str]:
         """
         Save the response data to the specified csv file, and return a copy of the pandas DataFrame.
         If no path is specified, return a CSV-formatted copy of the data instead.
         """
 
         def calc_rof(row):
-            return(self.get_rate_of_forgetting(row["start_time"] + 1, row["fact"]))
+            return self.get_rate_of_forgetting(row["start_time"] + 1, Fact(**row["fact"]))
 
         dat_resp = pd.DataFrame(self.responses)
         dat_facts = pd.DataFrame([r.fact for r in self.responses])
-        dat = pd.concat([dat_resp, dat_facts], axis = 1)
+        dat = pd.concat([dat_resp, dat_facts], axis=1)
 
         # Add column for rate of forgetting estimate after each observation
-        dat["alpha"] = dat.apply(calc_rof, axis = 1)
-        dat.drop(columns = "fact", inplace = True)
+        dat["alpha"] = dat.apply(calc_rof, axis=1)
+        dat.drop(columns="fact", inplace=True)
 
         # Add trial number column
         dat.index.name = "trial"
@@ -262,6 +262,6 @@ class SpacingModel(object):
         # Save to CSV file if a path was specified, otherwise return the CSV-formatted output
         if path is not None:
             dat.to_csv(path, encoding="UTF-8")
-            return(dat)
+            return dat
 
-        return(dat.to_csv())
+        return dat.to_csv()
