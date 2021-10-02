@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
 import math
 import pandas as pd
@@ -10,6 +10,7 @@ class Fact:
     fact_id: int
     question: str
     answer: str
+    properties: Dict[str, float]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -51,6 +52,25 @@ class SpacingModel:
                 "Each fact must have a unique ID")
 
         self.facts.append(fact)
+
+    def normalize_properties(self, properties: Dict[str, float]) -> None:
+        """
+        Normalize the properties and assign weights.
+        :param properties: Dict of property names and their weights
+        """
+        ranges = {
+            property_name: (min(fact.properties[property_name] for fact in self.facts),
+                            max(fact.properties[property_name] for fact in self.facts))
+            for property_name in properties.keys()
+        }
+
+        for fact in self.facts:
+            for property_name, weight in properties.items():
+                min_value, max_value = ranges[property_name]
+                normalized = (fact[property_name] - min_value) / (max_value - min_value)
+                weighted = normalized * weight
+
+                fact[property_name] = weighted
 
     def register_response(self, response: Response) -> None:
         """
