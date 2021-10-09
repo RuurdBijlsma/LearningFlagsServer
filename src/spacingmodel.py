@@ -12,6 +12,17 @@ class Fact:
     answer: str
     properties: Dict[str, float]
 
+    def similarity_to(self, other: 'Fact') -> float:
+        distance = math.sqrt(
+            sum(math.pow(self.properties[prop] - other.properties[prop], 2) for prop in self.properties)
+        )
+        similarity = math.log10(distance)
+
+        return math.fabs(similarity)
+
+    def __str__(self) -> str:
+        return f'Fact({self.fact_id}, Q={self.question}, A={self.answer})'
+
 
 @dataclasses.dataclass(frozen=True)
 class Response:
@@ -19,6 +30,8 @@ class Response:
     start_time: float
     rt: float
     correct: bool
+    # 1 if actual response, <1 if propagated similarity
+    magnitude: float = 1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -36,6 +49,7 @@ class SpacingModel:
     DEFAULT_ALPHA = 0.3
     C = 0.25
     F = 1.0
+    PROPAGATION_RATE = 0.05
 
     def __init__(self):
         self.facts = []
@@ -67,10 +81,10 @@ class SpacingModel:
         for fact in self.facts:
             for property_name, weight in properties.items():
                 min_value, max_value = ranges[property_name]
-                normalized = (fact[property_name] - min_value) / (max_value - min_value)
+                normalized = (fact.properties[property_name] - min_value) / (max_value - min_value)
                 weighted = normalized * weight
 
-                fact[property_name] = weighted
+                fact.properties[property_name] = weighted
 
     def register_response(self, response: Response) -> None:
         """
@@ -82,6 +96,19 @@ class SpacingModel:
                                f"start_time: {response.start_time}. Each response must occur at a unique start_time.")
 
         self.responses.append(response)
+
+        for other_fact in (fact for fact in self.facts if fact != response.fact):
+            # Don't propagate to unseen facts
+            if other_fact not in (response.fact for response in self.responses if response.magnitude == 1):
+                continue
+
+            similarity = response.fact.similarity_to(other_fact)
+            print(f'{response.fact} ~ {other_fact}: {similarity}')
+
+            magnitude = self.PROPAGATION_RATE * similarity
+            print('magnitude', magnitude)
+            propagated_response = dataclasses.replace(response, fact=other_fact, magnitude=magnitude)
+            self.responses.append(propagated_response)
 
     def get_next_fact(self, current_time: int) -> (Fact, bool):
         """
@@ -97,7 +124,8 @@ class SpacingModel:
 
         # Prevent an immediate repetition of the same fact
         if len(seen_facts) > 2:
-            last_response = self.responses[-1]
+            # last_response = self.responses[-1]
+            last_response = next(response for response in reversed(self.responses) if response.magnitude == 1)
             seen_facts = [(f, a) for (f, a) in seen_facts if f.fact_id != last_response.fact.fact_id]
 
         # Reinforce the weakest fact with an activation below the threshold
@@ -121,6 +149,8 @@ class SpacingModel:
         # Calculate the activation by running through the sequence of previous responses
         for response in responses_for_fact:
             activation = self.calculate_activation_from_encounters(encounters, response.start_time)
+            activation *= response.magnitude
+
             encounters.append(
                 Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
             alpha = self.estimate_alpha(encounters, activation, response, alpha)
