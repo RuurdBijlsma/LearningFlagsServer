@@ -2,3 +2,4 @@ python-socketio
 pandas
 matplotlib
 numpy
+aiohttp

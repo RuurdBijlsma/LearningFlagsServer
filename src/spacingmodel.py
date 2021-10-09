@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, Any
 
 import math
 import pandas as pd
@@ -7,7 +7,7 @@ import pandas as pd
 
 @dataclasses.dataclass(frozen=True)
 class Fact:
-    fact_id: int
+    fact_id: Any
     question: str
     answer: str
     properties: Dict[str, float]
@@ -110,7 +110,7 @@ class SpacingModel:
             propagated_response = dataclasses.replace(response, fact=other_fact, magnitude=magnitude)
             self.responses.append(propagated_response)
 
-    def get_next_fact(self, current_time: int) -> (Fact, bool):
+    def get_next_fact(self, current_time: float) -> (Fact, bool):
         """
         Returns a tuple containing the fact that needs to be repeated most urgently and a boolean indicating whether
         this fact is new (True) or has been presented before (False).
@@ -137,7 +137,7 @@ class SpacingModel:
         # If none of the previously seen facts has an activation below the threshold, return a new fact
         return not_seen_facts[0][0], True
 
-    def calculate_alpha(self, time: int, fact: Fact) -> (float, float):
+    def calculate_alpha(self, time: float, fact: Fact) -> (float, float):
         """
         Calculate alpha and list of previous encounters
         :return:
@@ -163,7 +163,7 @@ class SpacingModel:
 
         return alpha, encounters
 
-    def get_rate_of_forgetting(self, time: int, fact: Fact) -> float:
+    def get_rate_of_forgetting(self, time: float, fact: Fact) -> float:
         """
         Return the estimated rate of forgetting of the fact at the specified time
         """
@@ -171,7 +171,7 @@ class SpacingModel:
 
         return alpha
 
-    def calculate_activation(self, time: int, fact: Fact) -> float:
+    def calculate_activation(self, time: float, fact: Fact) -> float:
         """
         Calculate the activation of a fact at the given time.
         """
@@ -233,7 +233,7 @@ class SpacingModel:
         return (a0 + a1) / 2
 
     @staticmethod
-    def calculate_activation_from_encounters(encounters: [Encounter], current_time: int) -> float:
+    def calculate_activation_from_encounters(encounters: [Encounter], current_time: float) -> float:
         included_encounters = [e for e in encounters if e.time < current_time]
 
         if len(included_encounters) == 0:

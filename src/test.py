@@ -1,5 +1,4 @@
-from typing import Tuple
-
+import facts
 from spacingmodel import *
 
 
@@ -14,23 +13,9 @@ def print_activations(model: SpacingModel, time: int, msg: str = 'Activations'):
 def main():
     model = SpacingModel()
 
-    def properties(loc: Tuple[float, float], population: float) -> dict:
-        longitude, latitude = loc
-        return {
-            'longitude': longitude,
-            'latitude': latitude,
-            'population': population,
-        }
+    facts.load_facts(model)
 
-    belgium = Fact(1, 'Belgium.png', 'Belgium', properties((50.5039, 4.4699), 11_560_000))
-    netherlands = Fact(2, 'Netherlands.png', 'Netherlands', properties((52.1326, 5.2913), 17_440_000))
-    germany = Fact(3, 'Germany.png', 'Germany', properties((51.1657, 10.4515), 83_240_000))
-
-    model.add_fact(belgium)
-    model.add_fact(netherlands)
-    model.add_fact(germany)
-
-    model.normalize_properties({'longitude': 0.5, 'latitude': 0.5, 'population': 1})
+    belgium, netherlands, germany = model.facts
 
     rt = 2_000
     time = 10_000
