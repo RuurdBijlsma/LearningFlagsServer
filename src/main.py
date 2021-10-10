@@ -21,7 +21,7 @@ def initialize_model() -> SpacingModel:
 
 
 def get_fact_by_country_code(model: SpacingModel, country_code: str) -> Fact:
-    return next(fact for fact in model.facts if fact.fact_id == country_code)
+    return next(fact for fact in model.facts if fact.question == country_code)
 
 
 def with_model(f: Callable) -> Callable:
