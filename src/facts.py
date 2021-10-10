@@ -30,15 +30,14 @@ def merge_data() -> List[Fact]:
     countries['latitude'] = location['latitude']
     countries['longitude'] = location['longitude']
 
+    countries.dropna(inplace=True)
+
     facts = []
     for idx, (country, properties) in enumerate(countries.iterrows()):
         name = properties['name']
         population = properties['population']
         longitude = properties['longitude']
         latitude = properties['latitude']
-
-        if any(v is None for v in (population, longitude, latitude)):
-            continue
 
         facts.append(Fact(
             fact_id=idx,

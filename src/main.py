@@ -85,7 +85,7 @@ async def connect(sid, _environ):
         model = initialize_model()
         session['model'] = model
 
-        return len(model.facts)
+        await sio.emit('fact_count', len(model.facts), to=sid)
 
 
 @sio.event
