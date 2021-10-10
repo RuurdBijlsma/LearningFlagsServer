@@ -14,6 +14,7 @@ BLACKLIST = [
     'MQ',
     'PM',
     'GP',
+    'YT',
 ]
 
 
