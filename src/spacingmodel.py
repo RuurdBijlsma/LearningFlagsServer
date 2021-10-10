@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, List, Tuple
 
 import math
 import pandas as pd
@@ -137,7 +137,7 @@ class SpacingModel:
         # If none of the previously seen facts has an activation below the threshold, return a new fact
         return not_seen_facts[0][0], True
 
-    def calculate_alpha(self, time: float, fact: Fact) -> (float, float):
+    def calculate_alpha(self, time: float, fact: Fact) -> Tuple[float, List[Encounter]]:
         """
         Calculate alpha and list of previous encounters
         :return:
