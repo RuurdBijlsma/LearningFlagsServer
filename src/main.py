@@ -67,11 +67,16 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
 
 @sio.event
 @with_model
-async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[float, float]]:
+async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[str, float]]:
     result = {}
 
     for fact in model.facts:
         activation = model.calculate_activation(time.time(), fact)
+
+        # This breaks when sending
+        if activation == -float('inf'):
+            activation = str(activation)
+
         rof, _ = model.calculate_alpha(time.time(), fact)
 
         result[fact.question] = (activation, rof)
