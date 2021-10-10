@@ -15,6 +15,7 @@ BLACKLIST = [
     'PM',
     'GP',
     'YT',
+    'NC',
 ]
 
 
