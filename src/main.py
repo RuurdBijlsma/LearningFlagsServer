@@ -72,7 +72,7 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[f
 
     for fact in model.facts:
         activation = model.calculate_activation(time.time(), fact)
-        rof = model.calculate_alpha(time.time(), fact)
+        rof, _ = model.calculate_alpha(time.time(), fact)
 
         result[fact.question] = (activation, rof)
 
