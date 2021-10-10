@@ -6,6 +6,14 @@ import pandas as pd
 
 from spacingmodel import SpacingModel, Fact
 
+# These countries seem valid, but should not be included for some other reason
+BLACKLIST = [
+    # Shares flag with France
+    'GF',
+    'RE',
+    'MQ',
+]
+
 
 def load_facts(model: SpacingModel) -> None:
     facts = merge_data()
@@ -31,6 +39,8 @@ def merge_data() -> List[Fact]:
     countries['longitude'] = location['longitude']
 
     countries.dropna(inplace=True)
+
+    countries.drop(BLACKLIST, inplace=True)
 
     facts = []
     for idx, (country, properties) in enumerate(countries.iterrows()):
