@@ -73,10 +73,6 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
     for fact in model.facts:
         activation = model.calculate_activation(time.time(), fact)
 
-        # This breaks when sending
-        if activation == -float('inf'):
-            activation = str(activation)
-
         rof, _ = model.calculate_alpha(time.time(), fact)
 
         result[fact.question] = (str(activation), rof)
