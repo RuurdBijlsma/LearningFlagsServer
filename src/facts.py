@@ -12,6 +12,7 @@ BLACKLIST = [
     'GF',
     'RE',
     'MQ',
+    'PM',
 ]
 
 
