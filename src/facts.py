@@ -1,23 +1,54 @@
-from typing import Tuple
+import pathlib
+from typing import List
+
+import pandas as pd
 
 from spacingmodel import SpacingModel, Fact
 
 
 def load_facts(model: SpacingModel) -> None:
-    def properties(loc: Tuple[float, float], population: float) -> dict:
-        longitude, latitude = loc
-        return {
-            'longitude': longitude,
-            'latitude': latitude,
-            'population': population,
-        }
+    facts = merge_data()
 
-    belgium = Fact('BE', 'Belgium.png', 'Belgium', properties((50.5039, 4.4699), 11_560_000))
-    netherlands = Fact('NL', 'Netherlands.png', 'Netherlands', properties((52.1326, 5.2913), 17_440_000))
-    germany = Fact('DE', 'Germany.png', 'Germany', properties((51.1657, 10.4515), 83_240_000))
-
-    model.add_fact(belgium)
-    model.add_fact(netherlands)
-    model.add_fact(germany)
+    for fact in facts:
+        model.add_fact(fact)
 
     model.normalize_properties({'longitude': 0.5, 'latitude': 0.5, 'population': 1})
+
+
+def merge_data() -> List[Fact]:
+    base_path = pathlib.Path('../data')
+    countries = pd.read_json(base_path / 'countries.json', orient='index')
+    population = pd.read_csv(base_path / 'population.csv', index_col=['cca2'])
+    location = pd.read_csv(base_path / 'flags-latlng.tsv', sep='\t', index_col='country')
+
+    countries.columns = ['name']
+    countries['population'] = population['pop2021']
+    countries['latitude'] = location['latitude']
+    countries['longitude'] = location['longitude']
+
+    facts = []
+    for idx, (country, properties) in enumerate(countries.iterrows()):
+        name = properties['name']
+        population = properties['population']
+        longitude = properties['longitude']
+        latitude = properties['latitude']
+
+        if any(v is None for v in (population, longitude, latitude)):
+            continue
+
+        facts.append(Fact(
+            fact_id=idx,
+            question=country,
+            answer=name,
+            properties={
+                'population': population,
+                'longitude': longitude,
+                'latitude': latitude,
+            },
+        ))
+
+    return facts
+
+
+if __name__ == '__main__':
+    merge_data()

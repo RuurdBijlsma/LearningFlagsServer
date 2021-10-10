@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict
 
 import math
 import pandas as pd
@@ -7,7 +7,7 @@ import pandas as pd
 
 @dataclasses.dataclass(frozen=True)
 class Fact:
-    fact_id: Any
+    fact_id: int
     question: str
     answer: str
     properties: Dict[str, float]
