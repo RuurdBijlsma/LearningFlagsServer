@@ -1,4 +1,5 @@
 import pathlib
+import random
 from typing import List
 
 import pandas as pd
@@ -8,6 +9,9 @@ from spacingmodel import SpacingModel, Fact
 
 def load_facts(model: SpacingModel) -> None:
     facts = merge_data()
+
+    # Shuffle the facts so we don't always start with Andorra
+    random.shuffle(facts)
 
     for fact in facts:
         model.add_fact(fact)

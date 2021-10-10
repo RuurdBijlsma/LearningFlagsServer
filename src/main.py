@@ -1,7 +1,7 @@
 import dataclasses
 import functools
 import time
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Dict
 
 import socketio
 from aiohttp import web
@@ -66,9 +66,26 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
 
 
 @sio.event
+@with_model
+async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[float, float]]:
+    result = {}
+
+    for fact in model.facts:
+        activation = model.calculate_activation(time.time(), fact)
+        rof = model.calculate_alpha(time.time(), fact)
+
+        result[fact.question] = (activation, rof)
+
+    return result
+
+
+@sio.event
 async def connect(sid, _environ):
     async with sio.session(sid) as session:
-        session['model'] = initialize_model()
+        model = initialize_model()
+        session['model'] = model
+
+        return len(model.facts)
 
 
 @sio.event
