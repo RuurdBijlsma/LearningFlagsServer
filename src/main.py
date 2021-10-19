@@ -14,8 +14,8 @@ app = web.Application()
 sio.attach(app)
 
 
-def initialize_model() -> SpacingModel:
-    model = SpacingModel()
+def initialize_model(enable_propagation: bool) -> SpacingModel:
+    model = SpacingModel(enable_propagation=enable_propagation)
     facts.load_facts(model)
     return model
 
@@ -75,18 +75,25 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
 
         rof, _ = model.calculate_alpha(time.time(), fact)
 
-        result[fact.question] = (str(activation), rof)
+        # Sending breaks when activation = -inf, so we'll turn it all to strings
+        activation = str(activation)
+        result[fact.question] = (activation, rof)
 
     return result
 
 
 @sio.event
-async def connect(sid, _environ):
+async def reset_model(sid: str, enable_propagation: bool, **_kwargs) -> int:
     async with sio.session(sid) as session:
-        model = initialize_model()
+        model = initialize_model(enable_propagation)
         session['model'] = model
 
-        await sio.emit('fact_count', len(model.facts), to=sid)
+        return len(model.facts)
+
+
+@sio.event
+async def connect(sid, _environ):
+    print('connect ', sid)
 
 
 @sio.event

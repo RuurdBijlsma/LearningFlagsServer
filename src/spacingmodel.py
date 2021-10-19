@@ -51,7 +51,10 @@ class SpacingModel:
     F = 1.0
     PROPAGATION_RATE = 0.05
 
-    def __init__(self):
+    def __init__(self, enable_propagation: bool) -> None:
+        print(f'Creating model with propagation={enable_propagation}')
+
+        self.enable_propagation = enable_propagation
         self.facts = []
         self.responses = []
 
@@ -97,6 +100,10 @@ class SpacingModel:
 
         self.responses.append(response)
 
+        if self.enable_propagation:
+            self.propagate_response(response)
+
+    def propagate_response(self, response: Response) -> None:
         for other_fact in (fact for fact in self.facts if fact != response.fact):
             # Don't propagate to unseen facts
             if other_fact not in (response.fact for response in self.responses if response.magnitude == 1):

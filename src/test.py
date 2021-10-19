@@ -11,7 +11,7 @@ def print_activations(model: SpacingModel, time: int, msg: str = 'Activations'):
 
 
 def main():
-    model = SpacingModel()
+    model = SpacingModel(enable_propagation=True)
 
     facts.load_facts(model)
 
