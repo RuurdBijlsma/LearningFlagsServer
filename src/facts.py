@@ -95,9 +95,6 @@ def main() -> None:
     countries = pd.read_json(BASE_PATH / 'countries.json', orient='index')
 
     for idx, row in df.iterrows():
-        # if idx != 'GB':
-        #     continue
-
         most_similar = row.sort_values(ascending=False).index.values[1:20]
         most_similar = (countries.loc[code][0] for code in most_similar)
         name = countries.loc[idx][0]
