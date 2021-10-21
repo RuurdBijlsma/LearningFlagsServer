@@ -49,7 +49,7 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
     fact = get_fact_by_country_code(model, country_code)
 
     def clean_answer(v: str) -> str:
-        return unidecode.unidecode(v.lower())
+        return unidecode.unidecode(v.lower()).replace('.', '')
 
     correct = clean_answer(fact.answer) == clean_answer(answer)
 
