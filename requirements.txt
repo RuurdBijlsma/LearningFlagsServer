@@ -53,5 +53,7 @@ six==1.16.0
     #   python-dateutil
 typing-extensions==3.10.0.2
     # via aiohttp
+unidecode==1.3.2
+    # via -r requirements.in
 yarl==1.7.0
     # via aiohttp

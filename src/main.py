@@ -4,6 +4,7 @@ import time
 from typing import Callable, Tuple, Dict
 
 import socketio
+import unidecode
 from aiohttp import web
 
 import facts
@@ -47,7 +48,10 @@ async def next_fact(*_args, model: SpacingModel, **_kwargs) -> Tuple[Fact, bool]
 async def register_response(country_code: str, answer: str, rt: float, model: SpacingModel, **_kwargs) -> bool:
     fact = get_fact_by_country_code(model, country_code)
 
-    correct = fact.answer.lower() == answer.lower()
+    def clean_answer(v: str) -> str:
+        return unidecode.unidecode(v.lower())
+
+    correct = clean_answer(fact.answer) == clean_answer(answer)
 
     now = time.time()
     # TODO do we need to do this?
