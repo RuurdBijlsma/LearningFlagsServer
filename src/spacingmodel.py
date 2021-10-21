@@ -44,9 +44,6 @@ class Fact:
             return float('inf')
 
         similarity = 1 / math.sqrt(distance)
-
-        if other.question == 'CN':
-            a = 0
         return similarity
 
     def __str__(self) -> str:
