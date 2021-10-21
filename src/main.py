@@ -3,6 +3,7 @@ import functools
 import time
 from typing import Callable, Tuple, Dict
 
+import Levenshtein
 import socketio
 import unidecode
 from aiohttp import web
@@ -51,7 +52,8 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
     def clean_answer(v: str) -> str:
         return unidecode.unidecode(v.lower()).replace('.', '')
 
-    correct = clean_answer(fact.answer) == clean_answer(answer)
+    allowed_mistakes = len(fact.answer) // 7
+    correct = Levenshtein.distance(clean_answer(fact.answer), clean_answer(answer)) <= allowed_mistakes
 
     now = time.time()
     # TODO do we need to do this?
