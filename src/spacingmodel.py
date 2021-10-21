@@ -1,9 +1,22 @@
 import dataclasses
+import itertools
+import operator
 from typing import Optional, Union, Dict, List, Tuple
 
 import math
 import pandas as pd
 
+
+def tuple_op(op, a, b):
+    if isinstance(a, tuple) and isinstance(b, tuple):
+        a1, a2 = a
+        b1, b2 = b
+        return op(a1, b1), op(a2, b2)
+    if isinstance(a, tuple):
+        a1, a2 = a
+        return op(a1, b), op(a2, b)
+    else:
+        return op(a, b)
 
 @dataclasses.dataclass(frozen=True)
 class Fact:
@@ -13,12 +26,27 @@ class Fact:
     properties: Dict[str, float]
 
     def similarity_to(self, other: 'Fact') -> float:
-        distance = math.sqrt(
-            sum(math.pow(self.properties[prop] - other.properties[prop], 2) for prop in self.properties)
-        )
-        similarity = math.log10(distance)
+        distance = 0
+        distances = []
+        for prop in self.properties:
+            value = self.properties[prop]
+            other_value = other.properties[prop]
+            if isinstance(value, tuple):
+                assert isinstance(other_value, tuple)
+                d = math.sqrt((value[0] - other_value[0]) ** 2 + (value[1] - other_value[1]) ** 2)
+            else:
+                d = (value - other_value) ** 2
+            distances.append(d)
+            distance += d
 
-        return math.fabs(similarity)
+        if distance == 0:
+            return float('inf')
+
+        similarity = 1 / math.sqrt(distance)
+
+        if other.question == 'CN':
+            a = 0
+        return similarity
 
     def __str__(self) -> str:
         return f'Fact({self.fact_id}, Q={self.question}, A={self.answer})'
@@ -73,21 +101,45 @@ class SpacingModel:
     def normalize_properties(self, properties: Dict[str, float]) -> None:
         """
         Normalize the properties and assign weights.
-        :param properties: Dict of property names and their weights
+        :param weight_values: Dict of property names and their weights + whether to apply log
         """
-        ranges = {
-            property_name: (min(fact.properties[property_name] for fact in self.facts),
-                            max(fact.properties[property_name] for fact in self.facts))
-            for property_name in properties.keys()
-        }
+
+        print('Normalizing properties with weights:', weight_values)
+
+        def weird_log(a, b):
+            if a == 0:
+                return float('inf')
+            return math.log(a, b)
 
         for fact in self.facts:
-            for property_name, weight in properties.items():
-                min_value, max_value = ranges[property_name]
-                normalized = (fact.properties[property_name] - min_value) / (max_value - min_value)
-                weighted = normalized * weight
+            for property_name, (_, apply_log) in weight_values.items():
 
-                fact.properties[property_name] = weighted
+                if apply_log:
+                    fact.properties[property_name] = tuple_op(weird_log, fact.properties[property_name], 2)
+
+        ranges = {}
+        for key in weight_values:
+            values = list(map(lambda fact: fact.properties[key], self.facts))
+            if isinstance(values[0], tuple):
+                min_value = min(itertools.chain(*values))
+                max_value = max(itertools.chain(*values))
+            else:
+                min_value = min(values)
+                max_value = max(values)
+            ranges[key] = (min_value, max_value)
+
+        for fact in self.facts:
+            for property_name, (weight, _) in weight_values.items():
+                value = fact.properties[property_name]
+
+                min_value, max_value = ranges[property_name]
+                value = tuple_op(operator.sub, value, min_value)
+                value = tuple_op(operator.truediv, value, (max_value - min_value))
+                value = tuple_op(operator.mul, value, weight)
+
+                fact.properties[property_name] = value
+
+        pass
 
     def register_response(self, response: Response) -> None:
         """

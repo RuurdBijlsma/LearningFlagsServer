@@ -4,7 +4,10 @@ from typing import List
 
 import pandas as pd
 
+import spacingmodel
 from spacingmodel import SpacingModel, Fact
+
+BASE_PATH = pathlib.Path('../data')
 
 # These countries seem valid, but should not be included for some other reason
 BLACKLIST = [
@@ -20,7 +23,8 @@ BLACKLIST = [
 
 
 def load_facts(model: SpacingModel) -> None:
-    facts = merge_data()
+    data = merge_data()
+    facts = make_facts_from_df(data)
 
     # Shuffle the facts so we don't always start with Andorra
     random.shuffle(facts)
@@ -28,26 +32,14 @@ def load_facts(model: SpacingModel) -> None:
     for fact in facts:
         model.add_fact(fact)
 
-    model.normalize_properties({'longitude': 0.5, 'latitude': 0.5, 'population': 1})
+    model.normalize_properties({'coordinate': (1, False), 'population': (.6, True)})
 
 
-def merge_data() -> List[Fact]:
-    base_path = pathlib.Path('../data')
-    countries = pd.read_json(base_path / 'countries.json', orient='index')
-    population = pd.read_csv(base_path / 'population.csv', index_col=['cca2'])
-    location = pd.read_csv(base_path / 'flags-latlng.tsv', sep='\t', index_col='country')
-
-    countries.columns = ['name']
-    countries['population'] = population['pop2021']
-    countries['latitude'] = location['latitude']
-    countries['longitude'] = location['longitude']
-
-    countries.dropna(inplace=True)
-
-    countries.drop(BLACKLIST, inplace=True)
-
+def make_facts_from_df(countries: pd.DataFrame) -> List[Fact]:
     facts = []
     for idx, (country, properties) in enumerate(countries.iterrows()):
+        country: str
+
         name = properties['name']
         population = properties['population']
         longitude = properties['longitude']
@@ -59,13 +51,59 @@ def merge_data() -> List[Fact]:
             answer=name,
             properties={
                 'population': population,
-                'longitude': longitude,
-                'latitude': latitude,
+                'coordinate': (longitude, latitude),
             },
         ))
 
     return facts
 
 
+def merge_data() -> pd.DataFrame:
+    countries = pd.read_json(BASE_PATH / 'countries.json', orient='index')
+    population = pd.read_csv(BASE_PATH / 'population.csv', index_col=['cca2'])
+    location = pd.read_csv(BASE_PATH / 'flags-latlng.tsv', sep='\t', index_col='country')
+    countries.columns = ['name']
+    countries['population'] = population['pop2021']
+    countries['latitude'] = location['latitude']
+    countries['longitude'] = location['longitude']
+    countries.dropna(inplace=True)
+    countries.drop(BLACKLIST, inplace=True)
+    return countries
+
+
+def make_similarity_square(facts: List[Fact]) -> pd.DataFrame:
+    countries = [fact.question for fact in facts]
+
+    df = pd.DataFrame(index=countries, columns=countries)
+
+    for a in facts:
+        df_part = pd.Series(index=countries, dtype='float64')
+        for b in facts:
+            df_part[b.question] = a.similarity_to(b)
+
+        df[a.question] = df_part
+
+    return df
+
+
+def main() -> None:
+    model = spacingmodel.SpacingModel(enable_propagation=True)
+    load_facts(model)
+
+    df = make_similarity_square(model.facts)
+
+    countries = pd.read_json(BASE_PATH / 'countries.json', orient='index')
+
+    for idx, row in df.iterrows():
+        # if idx != 'GB':
+        #     continue
+
+        most_similar = row.sort_values(ascending=False).index.values[1:20]
+        most_similar = (countries.loc[code][0] for code in most_similar)
+        name = countries.loc[idx][0]
+        output = '\n'.join(f'\t{item}' for item in most_similar)
+        print(f'{name}:\n{output}')
+
+
 if __name__ == '__main__':
-    merge_data()
+    main()
