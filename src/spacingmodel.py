@@ -18,6 +18,7 @@ def tuple_op(op, a, b):
     else:
         return op(a, b)
 
+
 @dataclasses.dataclass(frozen=True)
 class Fact:
     fact_id: int
@@ -98,7 +99,7 @@ class SpacingModel:
 
         self.facts.append(fact)
 
-    def normalize_properties(self, properties: Dict[str, float]) -> None:
+    def normalize_properties(self, weight_values: Dict[str, Tuple[float, bool]]) -> None:
         """
         Normalize the properties and assign weights.
         :param weight_values: Dict of property names and their weights + whether to apply log
