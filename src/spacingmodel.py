@@ -66,6 +66,7 @@ class Encounter:
     time: float
     reaction_time: float
     decay: float
+    magnitude: float
 
 
 class SpacingModel:
@@ -117,7 +118,7 @@ class SpacingModel:
 
         ranges = {}
         for key in weight_values:
-            values = list(map(lambda fact: fact.properties[key], self.facts))
+            values = [fact.properties[key] for fact in self.facts]
             if isinstance(values[0], tuple):
                 min_value = min(itertools.chain(*values))
                 max_value = max(itertools.chain(*values))
@@ -206,10 +207,14 @@ class SpacingModel:
         # Calculate the activation by running through the sequence of previous responses
         for response in responses_for_fact:
             activation = self.calculate_activation_from_encounters(encounters, response.start_time)
-            activation *= response.magnitude
 
-            encounters.append(
-                Encounter(activation, response.start_time, self.normalise_reaction_time(response), self.DEFAULT_ALPHA))
+            encounters.append(Encounter(
+                activation,
+                response.start_time,
+                self.normalise_reaction_time(response),
+                self.DEFAULT_ALPHA,
+                response.magnitude),
+            )
             alpha = self.estimate_alpha(encounters, activation, response, alpha)
 
             # Update decay estimates of previous encounters
@@ -296,7 +301,8 @@ class SpacingModel:
         if len(included_encounters) == 0:
             return -float("inf")
 
-        return math.log(sum([math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters]))
+        return math.log(
+            sum(math.pow((current_time - e.time) / 1000, -e.decay) * e.magnitude for e in included_encounters))
 
     def calculate_predicted_reaction_time_error(self, test_set: [Encounter], decay_adjusted_encounters: [Encounter],
                                                 reading_time: float) -> float:
