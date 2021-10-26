@@ -88,6 +88,16 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
     return result
 
 
+@sio.event
+async def get_subset_flags(sid: str, subset_id: int):
+    # Todo make this, give flag list for this user current subset
+    return [
+        {'question': 'DE', 'answer': 'Germany'},
+        {'question': 'NL', 'answer': 'Netherlands'},
+        {'question': 'HU', 'answer': 'Hungary'},
+    ]
+
+
 # subset id is 0 or 1 (or -1 for all flags?)
 @sio.event
 async def reset_model(sid: str, subset_id: int, enable_propagation: bool, **_kwargs) -> int:
@@ -96,12 +106,6 @@ async def reset_model(sid: str, subset_id: int, enable_propagation: bool, **_kwa
         session['model'] = model
 
         return len(model.facts)
-
-
-@sio.event
-async def get_subset_flags(sid: str):
-    pass  # return list of flags with country code and name for the subset
-    # [{code: 'SR', name: 'Serbia'}, {code: 'NL', name: 'Netherlands'}]
 
 
 @sio.event
