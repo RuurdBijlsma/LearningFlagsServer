@@ -22,12 +22,21 @@ BLACKLIST = [
 ]
 
 
-def load_facts(model: SpacingModel) -> None:
+def load_facts(model: SpacingModel, subset_id: int) -> None:
+    #subset size
+    n = 60
     data = merge_data()
-    facts = make_facts_from_df(data)
+    facts_df = make_facts_from_df(data)
 
     # Shuffle the facts so we don't always start with Andorra
-    random.shuffle(facts)
+    random.seed(4)
+    random.shuffle(facts_df)
+
+    if subset_id:
+        facts_subsets = [facts_df[i * n:(i + 1) * n] for i in range((len(facts_df) + n - 1) // n )]
+        facts = facts_subsets[subset_id]
+    else:
+        facts = facts_df
 
     for fact in facts:
         model.add_fact(fact)
@@ -88,7 +97,7 @@ def make_similarity_square(facts: List[Fact]) -> pd.DataFrame:
 
 def main() -> None:
     model = spacingmodel.SpacingModel(enable_propagation=True)
-    load_facts(model)
+    load_facts(model, subset_id=None)
 
     df = make_similarity_square(model.facts)
 

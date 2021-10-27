@@ -13,7 +13,7 @@ def print_activations(model: SpacingModel, time: int, msg: str = 'Activations'):
 def main():
     model = SpacingModel(enable_propagation=True)
 
-    facts.load_facts(model)
+    facts.load_facts(model, subset_id=None)
 
     belgium = next(fact for fact in model.facts if fact.question == 'BE')
     netherlands = next(fact for fact in model.facts if fact.question == 'NL')

@@ -16,9 +16,9 @@ app = web.Application()
 sio.attach(app)
 
 
-def initialize_model(enable_propagation: bool) -> SpacingModel:
+def initialize_model(enable_propagation: bool, subset_id: int) -> SpacingModel:
     model = SpacingModel(enable_propagation=enable_propagation)
-    facts.load_facts(model)
+    facts.load_facts(model,subset_id)
     return model
 
 
@@ -102,7 +102,7 @@ async def get_subset_flags(sid: str, subset_id: int):
 @sio.event
 async def reset_model(sid: str, subset_id: int, enable_propagation: bool, **_kwargs) -> int:
     async with sio.session(sid) as session:
-        model = initialize_model(enable_propagation)
+        model = initialize_model(enable_propagation, subset_id)
         session['model'] = model
 
         return len(model.facts)
