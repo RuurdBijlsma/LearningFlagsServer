@@ -1,6 +1,6 @@
 import pathlib
 import random
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 
@@ -22,8 +22,8 @@ BLACKLIST = [
 ]
 
 
-def load_facts(model: SpacingModel, subset_id: int) -> None:
-    #subset size
+def load_facts(model: SpacingModel, subset_id: Optional[int]) -> None:
+    # subset size
     n = 60
     data = merge_data()
     facts_df = make_facts_from_df(data)
@@ -32,9 +32,11 @@ def load_facts(model: SpacingModel, subset_id: int) -> None:
     random.seed(4)
     random.shuffle(facts_df)
 
-    if subset_id:
-        facts_subsets = [facts_df[i * n:(i + 1) * n] for i in range((len(facts_df) + n - 1) // n )]
+    if subset_id is not None:
+        print(f'Loading subset {subset_id}')
+        facts_subsets = [facts_df[i * n:(i + 1) * n] for i in range((len(facts_df) + n - 1) // n)]
         facts = facts_subsets[subset_id]
+        assert len(facts) == n, len(facts)
     else:
         facts = facts_df
 

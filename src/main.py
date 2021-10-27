@@ -1,7 +1,7 @@
 import dataclasses
 import functools
 import time
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, Optional, List
 
 import Levenshtein
 import socketio
@@ -16,9 +16,9 @@ app = web.Application()
 sio.attach(app)
 
 
-def initialize_model(enable_propagation: bool, subset_id: int) -> SpacingModel:
+def initialize_model(enable_propagation: bool, subset_id: Optional[int]) -> SpacingModel:
     model = SpacingModel(enable_propagation=enable_propagation)
-    facts.load_facts(model,subset_id)
+    facts.load_facts(model, subset_id)
     return model
 
 
@@ -89,18 +89,14 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
 
 
 @sio.event
-async def get_subset_flags(sid: str, subset_id: int):
-    # Todo make this, give flag list for this user current subset
-    return [
-        {'question': 'DE', 'answer': 'Germany'},
-        {'question': 'NL', 'answer': 'Netherlands'},
-        {'question': 'HU', 'answer': 'Hungary'},
-    ]
+@with_model
+async def get_subset_flags(*_args, model: SpacingModel, **_kwargs) -> List[dict]:
+    return [dataclasses.asdict(fact) for fact in model.facts]
 
 
-# subset id is 0 or 1 (or -1 for all flags?)
+# subset id is 0 or 1 (or None for all flags)
 @sio.event
-async def reset_model(sid: str, subset_id: int, enable_propagation: bool, **_kwargs) -> int:
+async def reset_model(sid: str, subset_id: Optional[int], enable_propagation: bool, **_kwargs) -> int:
     async with sio.session(sid) as session:
         model = initialize_model(enable_propagation, subset_id)
         session['model'] = model
