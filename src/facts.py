@@ -28,16 +28,17 @@ def load_facts(model: SpacingModel, subset_id: Optional[int]) -> None:
     data = merge_data()
     facts_df = make_facts_from_df(data)
 
-    # Shuffle the facts so we don't always start with Andorra
-    random.seed(4)
-    random.shuffle(facts_df)
-
     if subset_id is not None:
+        # Shuffle all facts so the subsets are random
+        fixed_rng = random.Random(4)
+        fixed_rng.shuffle(facts_df)
         print(f'Loading subset {subset_id}')
         facts_subsets = [facts_df[i * n:(i + 1) * n] for i in range((len(facts_df) + n - 1) // n)]
         facts = facts_subsets[subset_id]
         assert len(facts) == n, len(facts)
     else:
+        # Outside the experiment we want to learn all facts, use rng without set seed to randomize
+        random.shuffle(facts_df)
         facts = facts_df
 
     for fact in facts:
