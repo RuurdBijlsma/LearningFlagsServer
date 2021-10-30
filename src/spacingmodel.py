@@ -161,10 +161,10 @@ class SpacingModel:
                 continue
 
             similarity = response.fact.similarity_to(other_fact)
-            print(f'{response.fact} ~ {other_fact}: {similarity}')
+            # print(f'{response.fact} ~ {other_fact}: {similarity}')
 
             magnitude = self.PROPAGATION_RATE * similarity
-            print('magnitude', magnitude)
+            # print('magnitude', magnitude)
             propagated_response = dataclasses.replace(response, fact=other_fact, magnitude=magnitude)
             self.responses.append(propagated_response)
 
@@ -180,11 +180,13 @@ class SpacingModel:
         seen_facts = [(f, a) for (f, a) in fact_activations if a > -float("inf")]
         not_seen_facts = [(f, a) for (f, a) in fact_activations if a == -float("inf")]
 
+        print(f'{len(seen_facts)=}, {len(not_seen_facts)=}, {len(self.facts)}')
         # Prevent an immediate repetition of the same fact
-        if len(seen_facts) > 2:
-            # last_response = self.responses[-1]
+
+        if len(seen_facts) > 1:
             last_response = next(response for response in reversed(self.responses) if response.magnitude == 1)
             seen_facts = [(f, a) for (f, a) in seen_facts if f.fact_id != last_response.fact.fact_id]
+            print(last_response.fact.question, 'already seen', last_response.fact.fact_id)
 
         # Reinforce the weakest fact with an activation below the threshold
         seen_facts_below_threshold = [(f, a) for (f, a) in seen_facts if a < self.FORGET_THRESHOLD]
