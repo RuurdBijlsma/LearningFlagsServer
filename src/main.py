@@ -73,16 +73,21 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
 
 @sio.event
 @with_model
-async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[str, float]]:
+async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[str, str]]:
     result = {}
 
     for fact in model.facts:
-        activation = model.calculate_activation(time.time(), fact)
-
-        rof = model.get_rate_of_forgetting(time.time(), fact)
+        try:
+            activation = model.calculate_activation(time.time(), fact)
+            rof = model.get_rate_of_forgetting(time.time(), fact)
+        except OverflowError:
+            # In rare cases the calculation overflows, we don't want to lose all results if that happens
+            activation = float('inf')
+            rof = float('inf')
 
         # Sending breaks when activation = -inf, so we'll turn it all to strings
         activation = str(activation)
+        rof = str(rof)
         result[fact.question] = (activation, rof)
 
     return result
