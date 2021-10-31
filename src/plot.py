@@ -5,13 +5,17 @@ from spacingmodel import *
 
 
 def main():
-    run_test(True)
-    run_test(False)
+    fig, (axs1, axs2) = plt.subplots(2, 2, figsize=(10, 10))
+    run_test(axs1, prop=True)
+    run_test(axs2, prop=False)
+
+    fig.show()
 
 
-def run_test(prop: bool, n=50):
+def run_test(axs, prop: bool, n=50):
     model = SpacingModel(enable_propagation=prop)
     facts.load_facts(model, subset_id=1)
+    # model.facts = model.facts[:20]
     # model.facts = [fact for fact in model.facts if fact.question in {'BE', 'NL', 'DE'}]
 
     acts = []
@@ -55,13 +59,13 @@ def run_test(prop: bool, n=50):
         acts.append(activation)
         rofs.append(rof)
 
-    plt.title(f'Activtion {prop=}')
-    plt.plot(acts)
-    plt.show()
+    ax1, ax2 = axs
 
-    plt.title(f'ROF {prop=}')
-    plt.plot(rofs)
-    plt.show()
+    ax1.set_title(f'Activtion {prop=}')
+    ax1.plot(acts)
+
+    ax2.set_title(f'ROF {prop=}')
+    ax2.plot(rofs)
 
 
 if __name__ == '__main__':

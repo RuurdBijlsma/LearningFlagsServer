@@ -197,7 +197,7 @@ class SpacingModel:
         # If none of the previously seen facts has an activation below the threshold, return a new fact
         return not_seen_facts[0][0], True
 
-    def calculate_alpha(self, time: float, fact: Fact) -> Tuple[float, List[Encounter]]:
+    def calculate_alpha(self, time: float, fact: Fact, include_propagated: bool) -> Tuple[float, List[Encounter]]:
         """
         Calculate alpha and list of previous encounters
         :return:
@@ -208,6 +208,9 @@ class SpacingModel:
         alpha = self.DEFAULT_ALPHA
         # Calculate the activation by running through the sequence of previous responses
         for response in responses_for_fact:
+            if not include_propagated and response.magnitude < 1:
+                continue
+
             activation = self.calculate_activation_from_encounters(encounters, response.start_time)
 
             encounters.append(Encounter(
@@ -231,7 +234,7 @@ class SpacingModel:
         """
         Return the estimated rate of forgetting of the fact at the specified time
         """
-        alpha, _ = self.calculate_alpha(time, fact)
+        alpha, _ = self.calculate_alpha(time, fact, include_propagated=True)
 
         return alpha
 
@@ -240,7 +243,7 @@ class SpacingModel:
         Calculate the activation of a fact at the given time.
         """
 
-        _, encounters = self.calculate_alpha(time, fact)
+        _, encounters = self.calculate_alpha(time, fact, include_propagated=False)
 
         return self.calculate_activation_from_encounters(encounters, time)
 
@@ -312,8 +315,10 @@ class SpacingModel:
         Calculate the summed absolute difference between observed response times and those predicted based on a decay
         adjustment.
         """
-        activations = [self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100) for e in
-                       test_set]
+        activations = [
+            self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100)
+            for e in
+            test_set]
         rt = [self.estimate_reaction_time_from_activation(a, reading_time) for a in activations]
         rt_errors = [abs(e.reaction_time - rt) for (e, rt) in zip(test_set, rt)]
         return sum(rt_errors)
