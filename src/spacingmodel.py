@@ -243,7 +243,7 @@ class SpacingModel:
         Calculate the activation of a fact at the given time.
         """
 
-        _, encounters = self.calculate_alpha(time, fact, include_propagated=False)
+        _, encounters = self.calculate_alpha(time, fact, include_propagated=True)
 
         return self.calculate_activation_from_encounters(encounters, time)
 
@@ -317,10 +317,10 @@ class SpacingModel:
         """
         activations = [
             self.calculate_activation_from_encounters(decay_adjusted_encounters, e.time - 100)
-            for e in
-            test_set]
+            for e in test_set
+        ]
         rt = [self.estimate_reaction_time_from_activation(a, reading_time) for a in activations]
-        rt_errors = [abs(e.reaction_time - rt) for (e, rt) in zip(test_set, rt)]
+        rt_errors = [abs(e.reaction_time - rt) * e.magnitude for (e, rt) in zip(test_set, rt)]
         return sum(rt_errors)
 
     def estimate_reaction_time_from_activation(self, activation: float, reading_time: float) -> float:
