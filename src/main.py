@@ -79,7 +79,7 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
     for fact in model.facts:
         activation = model.calculate_activation(time.time(), fact)
 
-        rof, _ = model.calculate_alpha(time.time(), fact)
+        rof, _ = model.get_rate_of_forgetting(time.time(), fact)
 
         # Sending breaks when activation = -inf, so we'll turn it all to strings
         activation = str(activation)
