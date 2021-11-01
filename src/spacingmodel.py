@@ -76,7 +76,7 @@ class SpacingModel:
     DEFAULT_ALPHA = 0.3
     C = 0.25
     F = 1.0
-    PROPAGATION_RATE = 0.05
+    PROPAGATION_RATE = 0.01
 
     def __init__(self, enable_propagation: bool) -> None:
         print(f'Creating model with propagation={enable_propagation}')
@@ -84,6 +84,7 @@ class SpacingModel:
         self.enable_propagation = enable_propagation
         self.facts = []
         self.responses = []
+        self.knowledge_factor = {}
 
     def add_fact(self, fact: Fact) -> None:
         """
@@ -95,6 +96,7 @@ class SpacingModel:
                 f"Error while adding fact: There is already a fact with the same ID: {fact.fact_id}. "
                 "Each fact must have a unique ID")
 
+        self.knowledge_factor[fact.fact_id] = 0
         self.facts.append(fact)
 
     def normalize_properties(self, weight_values: Dict[str, Tuple[float, bool]]) -> None:
@@ -166,7 +168,8 @@ class SpacingModel:
             magnitude = self.PROPAGATION_RATE * similarity
             # print('magnitude', magnitude)
             propagated_response = dataclasses.replace(response, fact=other_fact, magnitude=magnitude)
-            self.responses.append(propagated_response)
+            # self.responses.append(propagated_response)
+            self.knowledge_factor[other_fact.fact_id] += magnitude * (1 if response.correct else -1)
 
     def get_next_fact(self, current_time: float) -> (Fact, bool):
         """
@@ -245,7 +248,7 @@ class SpacingModel:
 
         _, encounters = self.calculate_alpha(time, fact, include_propagated=True)
 
-        return self.calculate_activation_from_encounters(encounters, time)
+        return self.calculate_activation_from_encounters(encounters, time) + self.knowledge_factor[fact.fact_id]
 
     def calculate_decay(self, activation: float, alpha: float) -> float:
         """

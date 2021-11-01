@@ -1,3 +1,5 @@
+import random
+
 import matplotlib.pyplot as plt
 
 import facts
@@ -45,7 +47,7 @@ def run_test(axs, prop: bool, n=50):
         t = ts * i
         fact, new = model.get_next_fact(t)
         print(f'showing {new=}', fact.question, t, )
-        model.register_response(Response(fact, t + rt, rt, correct=True))
+        model.register_response(Response(fact, t + rt, rt, correct=random.randint(0, 1) == 1))
 
         activation = [
             model.calculate_activation(t, m_fact)
