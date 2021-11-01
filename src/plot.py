@@ -16,7 +16,7 @@ def main():
     fig.show()
 
 
-def run_test(axs, prop: bool, n=150) -> int:
+def run_test(axs, prop: bool, n=500) -> int:
     model = SpacingModel(enable_propagation=prop)
     facts.load_facts(model, subset_id=1)
 

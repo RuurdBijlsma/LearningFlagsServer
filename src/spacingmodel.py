@@ -240,6 +240,7 @@ class SpacingModel:
 
         _, encounters = self.calculate_alpha(time, fact)
 
+        # Add knowledge factor, high knowledge factor value means more known, so activation should be slightly higher
         return self.calculate_activation_from_encounters(encounters, time) + \
                self.knowledge_factor[fact.fact_id] * self.ACTIVATION_PROPAGATION_RATE
 
@@ -293,7 +294,8 @@ class SpacingModel:
                 a0 = ac
 
         # The new alpha estimate is the average value in the remaining bracket
-        return (a0 + a1) / 2 + self.knowledge_factor[response.fact.fact_id] * self.ROF_PROPAGATION_RATE
+        # Add knowledge factor as well, more known = higher factor, so rof should be lower for them
+        return (a0 + a1) / 2 + self.knowledge_factor[response.fact.fact_id] * -1 * self.ROF_PROPAGATION_RATE
 
     @staticmethod
     def calculate_activation_from_encounters(encounters: [Encounter], current_time: float) -> float:
