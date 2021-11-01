@@ -56,8 +56,6 @@ class Response:
     start_time: float
     rt: float
     correct: bool
-    # 1 if actual response, <1 if propagated similarity
-    magnitude: float = 1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,7 +64,6 @@ class Encounter:
     time: float
     reaction_time: float
     decay: float
-    magnitude: float
 
 
 class SpacingModel:
@@ -159,16 +156,13 @@ class SpacingModel:
     def propagate_response(self, response: Response) -> None:
         for other_fact in (fact for fact in self.facts if fact != response.fact):
             # Don't propagate to unseen facts
-            if other_fact not in (response.fact for response in self.responses if response.magnitude == 1):
+            if other_fact not in (response.fact for response in self.responses):
                 continue
 
             similarity = response.fact.similarity_to(other_fact)
             # print(f'{response.fact} ~ {other_fact}: {similarity}')
 
             magnitude = self.PROPAGATION_RATE * similarity
-            # print('magnitude', magnitude)
-            propagated_response = dataclasses.replace(response, fact=other_fact, magnitude=magnitude)
-            # self.responses.append(propagated_response)
             self.knowledge_factor[other_fact.fact_id] += magnitude * (1 if response.correct else -1)
 
     def get_next_fact(self, current_time: float) -> (Fact, bool):
@@ -187,7 +181,7 @@ class SpacingModel:
         # Prevent an immediate repetition of the same fact
 
         if len(seen_facts) > 1:
-            last_response = next(response for response in reversed(self.responses) if response.magnitude == 1)
+            last_response = self.responses[-1]
             seen_facts = [(f, a) for (f, a) in seen_facts if f.fact_id != last_response.fact.fact_id]
             print(last_response.fact.question, 'already seen', last_response.fact.fact_id)
 
@@ -200,7 +194,7 @@ class SpacingModel:
         # If none of the previously seen facts has an activation below the threshold, return a new fact
         return not_seen_facts[0][0], True
 
-    def calculate_alpha(self, time: float, fact: Fact, include_propagated: bool) -> Tuple[float, List[Encounter]]:
+    def calculate_alpha(self, time: float, fact: Fact) -> Tuple[float, List[Encounter]]:
         """
         Calculate alpha and list of previous encounters
         :return:
@@ -211,9 +205,6 @@ class SpacingModel:
         alpha = self.DEFAULT_ALPHA
         # Calculate the activation by running through the sequence of previous responses
         for response in responses_for_fact:
-            if not include_propagated and response.magnitude < 1:
-                continue
-
             activation = self.calculate_activation_from_encounters(encounters, response.start_time)
 
             encounters.append(Encounter(
@@ -221,8 +212,7 @@ class SpacingModel:
                 response.start_time,
                 self.normalise_reaction_time(response),
                 self.DEFAULT_ALPHA,
-                response.magnitude),
-            )
+            ))
             alpha = self.estimate_alpha(encounters, activation, response, alpha)
 
             # Update decay estimates of previous encounters
@@ -237,7 +227,7 @@ class SpacingModel:
         """
         Return the estimated rate of forgetting of the fact at the specified time
         """
-        alpha, _ = self.calculate_alpha(time, fact, include_propagated=True)
+        alpha, _ = self.calculate_alpha(time, fact)
 
         return alpha
 
@@ -246,7 +236,7 @@ class SpacingModel:
         Calculate the activation of a fact at the given time.
         """
 
-        _, encounters = self.calculate_alpha(time, fact, include_propagated=True)
+        _, encounters = self.calculate_alpha(time, fact)
 
         return self.calculate_activation_from_encounters(encounters, time) + self.knowledge_factor[fact.fact_id]
 
@@ -309,7 +299,7 @@ class SpacingModel:
         if len(included_encounters) == 0:
             return -float("inf")
 
-        total = sum(math.pow((current_time - e.time) / 1000, -e.decay) * e.magnitude for e in included_encounters)
+        total = sum(math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters)
 
         if total == 0:
             return -float('inf')
@@ -327,7 +317,7 @@ class SpacingModel:
             for e in test_set
         ]
         rt = [self.estimate_reaction_time_from_activation(a, reading_time) for a in activations]
-        rt_errors = [abs(e.reaction_time - rt) * e.magnitude for (e, rt) in zip(test_set, rt)]
+        rt_errors = [abs(e.reaction_time - rt) for (e, rt) in zip(test_set, rt)]
         return sum(rt_errors)
 
     def estimate_reaction_time_from_activation(self, activation: float, reading_time: float) -> float:
