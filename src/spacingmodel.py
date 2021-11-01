@@ -74,6 +74,8 @@ class SpacingModel:
     C = 0.25
     F = 1.0
     PROPAGATION_RATE = 0.01
+    ROF_PROPAGATION_RATE = 0.1  # Default = 0.1
+    ACTIVATION_PROPAGATION_RATE = 1  # Default = 1
 
     def __init__(self, enable_propagation: bool) -> None:
         print(f'Creating model with propagation={enable_propagation}')
@@ -238,7 +240,8 @@ class SpacingModel:
 
         _, encounters = self.calculate_alpha(time, fact)
 
-        return self.calculate_activation_from_encounters(encounters, time) + self.knowledge_factor[fact.fact_id]
+        return self.calculate_activation_from_encounters(encounters, time) + \
+               self.knowledge_factor[fact.fact_id] * self.ACTIVATION_PROPAGATION_RATE
 
     def calculate_decay(self, activation: float, alpha: float) -> float:
         """
@@ -290,7 +293,7 @@ class SpacingModel:
                 a0 = ac
 
         # The new alpha estimate is the average value in the remaining bracket
-        return (a0 + a1) / 2
+        return (a0 + a1) / 2 + self.knowledge_factor[response.fact.fact_id] * self.ROF_PROPAGATION_RATE
 
     @staticmethod
     def calculate_activation_from_encounters(encounters: [Encounter], current_time: float) -> float:
