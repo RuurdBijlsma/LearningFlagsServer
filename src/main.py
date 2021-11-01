@@ -77,13 +77,8 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
     result = {}
 
     for fact in model.facts:
-        try:
-            activation = model.calculate_activation(time.time(), fact)
-            rof = model.get_rate_of_forgetting(time.time(), fact)
-        except OverflowError:
-            # In rare cases the calculation overflows, we don't want to lose all results if that happens
-            activation = float('inf')
-            rof = float('inf')
+        activation = model.calculate_activation(time.time(), fact)
+        rof = model.get_rate_of_forgetting(time.time(), fact)
 
         # Sending breaks when activation = -inf, so we'll turn it all to strings
         activation = str(activation)

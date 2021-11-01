@@ -306,8 +306,12 @@ class SpacingModel:
         if len(included_encounters) == 0:
             return -float("inf")
 
-        return math.log(
-            sum(math.pow((current_time - e.time) / 1000, -e.decay) * e.magnitude for e in included_encounters))
+        total = sum(math.pow((current_time - e.time) / 1000, -e.decay) * e.magnitude for e in included_encounters)
+
+        if total == 0:
+            return -float('inf')
+
+        return math.log(total)
 
     def calculate_predicted_reaction_time_error(self, test_set: [Encounter], decay_adjusted_encounters: [Encounter],
                                                 reading_time: float) -> float:
