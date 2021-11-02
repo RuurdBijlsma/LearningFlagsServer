@@ -1,5 +1,6 @@
 import dataclasses
 import functools
+import random
 import time
 from typing import Callable, Tuple, Dict, Optional, List
 
@@ -92,7 +93,8 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
 @sio.event
 @with_model
 async def get_subset_flags(*_args, model: SpacingModel, **_kwargs) -> List[dict]:
-    return [dataclasses.asdict(fact) for fact in model.facts]
+    fs = [dataclasses.asdict(fact) for fact in model.facts]
+    return random.sample(fs, len(fs))
 
 
 # subset id is 0 or 1 (or None for all flags)
