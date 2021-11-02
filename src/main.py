@@ -1,7 +1,6 @@
 import dataclasses
 import functools
 import random
-import time
 from typing import Callable, Tuple, Dict, Optional, List
 
 import Levenshtein
@@ -11,7 +10,7 @@ from aiohttp import web
 
 import facts
 from spacingmodel import SpacingModel, Fact, Response
-from src.utils import get_time
+from utils import get_time
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', logger=True)
 app = web.Application()
