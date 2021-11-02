@@ -304,7 +304,12 @@ class SpacingModel:
         if len(included_encounters) == 0:
             return -float("inf")
 
-        total = sum(math.pow((current_time - e.time) / 1000, -e.decay) for e in included_encounters)
+        decays = [e.decay for e in included_encounters]
+        if max(decays) > 5:
+            print(f'max decays {max(decays)}')
+        total = 0
+        for e in included_encounters:
+            total += math.pow((current_time - e.time) / 1000, -e.decay)
 
         if total == 0:
             return -float('inf')

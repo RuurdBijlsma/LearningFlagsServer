@@ -24,7 +24,7 @@ BLACKLIST = [
 
 def load_facts(model: SpacingModel, subset_id: Optional[int]) -> None:
     # subset size
-    n = 60
+    n = 50
     data = merge_data()
     facts_df = make_facts_from_df(data)
 

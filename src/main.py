@@ -10,6 +10,7 @@ from aiohttp import web
 
 import facts
 from spacingmodel import SpacingModel, Fact, Response
+from src.utils import get_time
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', logger=True)
 app = web.Application()
@@ -39,7 +40,7 @@ def with_model(f: Callable) -> Callable:
 @sio.event
 @with_model
 async def next_fact(*_args, model: SpacingModel, **_kwargs) -> Tuple[Fact, bool]:
-    fact, is_new = model.get_next_fact(time.time())
+    fact, is_new = model.get_next_fact(get_time())
 
     return dataclasses.asdict(fact), is_new
 
@@ -55,7 +56,7 @@ async def register_response(country_code: str, answer: str, rt: float, model: Sp
     allowed_mistakes = len(fact.answer) // 7
     correct = Levenshtein.distance(clean_answer(fact.answer), clean_answer(answer)) <= allowed_mistakes
 
-    now = time.time()
+    now = get_time()
     # TODO do we need to do this?
     start_time = now - rt
 
@@ -77,8 +78,8 @@ async def get_stats(*_args, model: SpacingModel, **_kwargs) -> Dict[str, Tuple[s
     result = {}
 
     for fact in model.facts:
-        activation = model.calculate_activation(time.time(), fact)
-        rof = model.get_rate_of_forgetting(time.time(), fact)
+        activation = model.calculate_activation(get_time(), fact)
+        rof = model.get_rate_of_forgetting(get_time(), fact)
 
         # Sending breaks when activation = -inf, so we'll turn it all to strings
         activation = str(activation)
